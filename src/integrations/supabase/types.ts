@@ -14,16 +14,229 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      approvals: {
+        Row: {
+          id: string
+          notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["user_status"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status: Database["public"]["Enums"]["user_status"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["user_status"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          entity: string | null
+          entity_id: string | null
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
+      dataset_entries: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          owner_name: string | null
+          phone: string | null
+          plot_number: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          owner_name?: string | null
+          phone?: string | null
+          plot_number: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          owner_name?: string | null
+          phone?: string | null
+          plot_number?: string
+        }
+        Relationships: []
+      }
+      plots: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          owner_name: string | null
+          plot_number: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          owner_name?: string | null
+          plot_number: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          owner_name?: string | null
+          plot_number?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          plot_id: string | null
+          status: Database["public"]["Enums"]["user_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+          name: string
+          phone?: string | null
+          plot_id?: string | null
+          status?: Database["public"]["Enums"]["user_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          plot_id?: string | null
+          status?: Database["public"]["Enums"]["user_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_plot_id_fkey"
+            columns: ["plot_id"]
+            isOneToOne: false
+            referencedRelation: "plots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      approve_user: {
+        Args: { _approve: boolean; _notes?: string; _user_id: string }
+        Returns: undefined
+      }
+      bootstrap_first_admin: { Args: { _user_id: string }; Returns: boolean }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      set_admin_role: {
+        Args: { _make_admin: boolean; _user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "resident"
+      user_status:
+        | "resident_pending"
+        | "external_pending"
+        | "approved"
+        | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +363,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "resident"],
+      user_status: [
+        "resident_pending",
+        "external_pending",
+        "approved",
+        "rejected",
+      ],
+    },
   },
 } as const
