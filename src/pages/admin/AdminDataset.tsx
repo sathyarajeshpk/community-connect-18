@@ -46,20 +46,26 @@ export default function AdminDataset() {
 
       const normalized = rows
         .map((r) => {
+          const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
           const get = (...keys: string[]) => {
             for (const k of keys) {
-              const found = Object.keys(r).find((rk) => rk.toLowerCase().replace(/[\s_]/g, "") === k.toLowerCase().replace(/[\s_]/g, ""));
-              if (found && String(r[found]).trim() !== "") return String(r[found]).trim();
+              const nk = norm(k);
+              const found = Object.keys(r).find((rk) => norm(rk) === nk);
+              if (found && r[found] !== null && r[found] !== undefined && String(r[found]).trim() !== "") {
+                let v = String(r[found]).trim();
+                if (/^\d+\.0+$/.test(v)) v = v.replace(/\.0+$/, "");
+                return v;
+              }
             }
             return null;
           };
-          const plot = get("plotnumber", "plot", "plotno", "flat", "flatnumber");
+          const plot = get("plotnumber", "plotno", "plot", "flat", "flatnumber");
           if (!plot) return null;
           return {
             plot_number: plot,
-            owner_name: get("ownername", "owner", "name"),
-            email: get("email", "emailid"),
-            phone: get("phone", "mobile", "contact"),
+            owner_name: get("ownername", "residentname", "owner", "resident", "name"),
+            email: get("email", "emailoptional", "emailid", "mail"),
+            phone: get("phone", "phonenumber", "mobile", "mobilenumber", "contact", "contactnumber"),
           };
         })
         .filter(Boolean) as Array<{ plot_number: string; owner_name: string | null; email: string | null; phone: string | null }>;
