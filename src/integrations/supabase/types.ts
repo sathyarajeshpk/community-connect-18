@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          pinned: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          pinned?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          pinned?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       approvals: {
         Row: {
           id: string
@@ -68,6 +98,42 @@ export type Database = {
           entity_id?: string | null
           id?: string
           metadata?: Json | null
+        }
+        Relationships: []
+      }
+      complaints: {
+        Row: {
+          author_id: string
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          description: string
+          id: string
+          status: Database["public"]["Enums"]["complaint_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          status?: Database["public"]["Enums"]["complaint_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          status?: Database["public"]["Enums"]["complaint_status"]
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -166,6 +232,36 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           id: string
@@ -225,6 +321,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_approved: { Args: { _user_id: string }; Returns: boolean }
       set_admin_role: {
         Args: { _make_admin: boolean; _user_id: string }
         Returns: undefined
@@ -232,6 +329,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "resident"
+      complaint_status: "open" | "in_progress" | "closed"
       user_status:
         | "resident_pending"
         | "external_pending"
@@ -365,6 +463,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "resident"],
+      complaint_status: ["open", "in_progress", "closed"],
       user_status: [
         "resident_pending",
         "external_pending",
