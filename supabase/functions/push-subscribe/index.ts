@@ -1,6 +1,10 @@
-import { corsHeaders } from "@supabase/supabase-js/cors";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { z } from "npm:zod@3.23.8";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 const Body = z.object({
   endpoint: z.string().url().max(2048),
