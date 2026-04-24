@@ -32,6 +32,27 @@ function getDefaultMonth() {
   return new Date().toISOString().slice(0, 7);
 }
 
+const TX_REF_QUERY_KEYS = ["utr", "txnRef", "txnId", "txnid", "ApprovalRefNo", "approvalRefNo"] as const;
+
+function readTxnRefFromLocation() {
+  if (typeof window === "undefined") return "";
+
+  const fromSearch = new URLSearchParams(window.location.search);
+  for (const key of TX_REF_QUERY_KEYS) {
+    const value = fromSearch.get(key);
+    if (value?.trim()) return value.trim();
+  }
+
+  const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+  const fromHash = new URLSearchParams(hash);
+  for (const key of TX_REF_QUERY_KEYS) {
+    const value = fromHash.get(key);
+    if (value?.trim()) return value.trim();
+  }
+
+  return "";
+}
+
 export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName, plotNumber }: Props) {
   const { user, profile } = useAuth();
   const [settings, setSettings] = useState<UpiSettings | null>(null);
@@ -43,6 +64,7 @@ export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName,
   const [selectedMonth, setSelectedMonth] = useState(getDefaultMonth());
   const [recording, setRecording] = useState(false);
   const [done, setDone] = useState(false);
+  const [paymentRef, setPaymentRef] = useState("");
 
   // Build last-6-months list for month selector
   const monthOptions = Array.from({ length: 6 }, (_, i) => {
@@ -72,6 +94,23 @@ export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName,
     });
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const hydratedTxnRef = readTxnRefFromLocation();
+    if (hydratedTxnRef) {
+      setUtrRef((prev) => prev || hydratedTxnRef);
+      setStep("record");
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const normalizedPlot = (plotNumber ?? profile?.plot_id ?? "NA").replace(/\s+/g, "").slice(0, 10).toUpperCase();
+    const now = Date.now().toString(36).toUpperCase();
+    setPaymentRef(`CC-${normalizedPlot}-${now}`);
+  }, [open, plotNumber, profile?.plot_id]);
+
   const buildUri = (scheme: string) => {
     if (!settings?.vpa) return "";
     const params = new URLSearchParams({
@@ -81,6 +120,7 @@ export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName,
     });
     if (amount && Number(amount) > 0) params.set("am", String(Number(amount).toFixed(2)));
     if (note) params.set("tn", note.slice(0, 80));
+    if (paymentRef) params.set("tr", paymentRef);
     return `${scheme}://pay?${params.toString()}`;
   };
 
@@ -221,7 +261,13 @@ export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName,
                   className="rounded-xl" placeholder="Transaction ID" />
               </div>
             </div>
+            {paymentRef ? (
+              <p className="text-xs text-muted-foreground">
+                Tracking ref used in payment link: <span className="font-medium text-foreground">{paymentRef}</span>
+              </p>
+            ) : null}
             <p className="text-xs text-muted-foreground">UTR helps the admin verify your payment quickly. Find it in your UPI app's transaction history.</p>
+            <p className="text-xs text-muted-foreground">If your UPI app sends a callback with transaction details, we auto-fill this field.</p>
             <Button onClick={recordPayment} disabled={recording} className="w-full rounded-xl h-11">
               {recording ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               Submit for confirmation
