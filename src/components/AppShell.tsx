@@ -1,19 +1,19 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Building2, Home, Megaphone, MessageSquare, Receipt, Settings, LogOut, Shield } from "lucide-react";
+import { Building2, Home, Megaphone, MessageSquare, Users, LogOut, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { profile, isAdmin, signOut } = useAuth();
+  const { isAdmin, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   const navItems = [
     { to: "/dashboard", label: "Home", icon: Home },
-    { to: "/bills", label: "Bills", icon: Receipt, soon: true },
-    { to: "/announcements", label: "News", icon: Megaphone, soon: true },
-    { to: "/complaints", label: "Issues", icon: MessageSquare, soon: true },
+    { to: "/announcements", label: "News", icon: Megaphone },
+    { to: "/complaints", label: "Issues", icon: MessageSquare },
+    { to: "/directory", label: "People", icon: Users },
   ];
 
   return (
@@ -55,10 +55,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             return (
               <button
                 key={item.to}
-                onClick={() => !item.soon && navigate(item.to)}
+                onClick={() => navigate(item.to)}
                 className={`flex flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors ${
-                  active ? "text-primary" : "text-muted-foreground"
-                } ${item.soon ? "opacity-40" : "hover:text-foreground"}`}
+                  active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
               >
                 <Icon className="h-5 w-5" />
                 {item.label}

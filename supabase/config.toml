@@ -2,3 +2,9 @@ project_id = "mxfjpauvhitvnwdzmvud"
 
 [functions.sync-dataset-sheet]
 verify_jwt = true
+
+[functions.push-public-key]
+verify_jwt = false
+
+[functions.notify-admins-new-signup]
+verify_jwt = false
