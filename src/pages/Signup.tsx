@@ -26,7 +26,10 @@ export default function Signup() {
   if (!loading && user) return <Navigate to="/dashboard" replace />;
 
   const setField = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((s) => ({ ...s, [k]: e.target.value }));
+    setForm((s) => {
+      const nextValue = k === "phone" ? e.target.value.replace(/\D/g, "").slice(0, 10) : e.target.value;
+      return { ...s, [k]: nextValue };
+    });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +62,14 @@ export default function Signup() {
       }
     }
 
+    try {
+      await supabase.functions.invoke("notify-admins-new-signup", {
+        body: { name: parsed.data.name, email: parsed.data.email, phone: parsed.data.phone, plotNumber: parsed.data.plotNumber },
+      });
+    } catch {
+      /* non-blocking */
+    }
+
     setSubmitting(false);
     await supabase.auth.signOut();
     toast.success("Account created. Awaiting admin approval. Please sign in after approval.");
@@ -79,7 +90,18 @@ export default function Signup() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="phone">Phone</Label>
-            <Input id="phone" type="tel" autoComplete="tel" value={form.phone} onChange={setField("phone")} placeholder="+91 98765 43210" required />
+            <Input
+              id="phone"
+              type="tel"
+              autoComplete="tel"
+              value={form.phone}
+              onChange={setField("phone")}
+              placeholder="10-digit mobile number"
+              inputMode="numeric"
+              maxLength={10}
+              required
+            />
+            <p className="text-xs text-muted-foreground">Enter exactly 10 digits.</p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="plotNumber">Plot number</Label>

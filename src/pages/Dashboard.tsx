@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import {
   Receipt, Megaphone, MessageSquare, Sparkles, Users, Bell, Shield,
-  CheckCircle2, Clock, XCircle, ChevronRight, IndianRupee,
+  CheckCircle2, Clock, XCircle, ChevronRight, IndianRupee, Image,
 } from "lucide-react";
 
 type Payment = {
@@ -17,6 +17,7 @@ type Payment = {
   amount: number;
   month: string;
   utr_ref: string | null;
+  proof_url: string | null;
   status: "pending" | "confirmed" | "rejected";
   created_at: string;
 };
@@ -39,7 +40,7 @@ export default function Dashboard() {
     Promise.all([
       supabase
         .from("maintenance_payments")
-        .select("id, plot_number, amount, month, utr_ref, status, created_at")
+        .select("id, plot_number, amount, month, utr_ref, proof_url, status, created_at")
         .eq("paid_by", user.id)
         .order("created_at", { ascending: false })
         .limit(12),
@@ -174,6 +175,11 @@ export default function Dashboard() {
                     {p.utr_ref && (
                       <p className="text-xs text-muted-foreground font-mono mt-0.5">UTR: {p.utr_ref}</p>
                     )}
+                    {p.proof_url ? (
+                      <a href={p.proof_url} target="_blank" rel="noreferrer" className="text-xs text-primary inline-flex items-center gap-1 mt-0.5">
+                        <Image className="h-3 w-3" /> View screenshot
+                      </a>
+                    ) : null}
                   </div>
                   <p className="text-sm font-semibold shrink-0">₹{Number(p.amount).toLocaleString("en-IN")}</p>
                 </div>

@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Save, IndianRupee } from "lucide-react";
+import { Loader2, Save, IndianRupee, Smartphone, QrCode } from "lucide-react";
 
 export default function AdminSettings() {
   const [limit, setLimit] = useState("7");
   const [vpa, setVpa] = useState("");
   const [payeeName, setPayeeName] = useState("Ashirvaadh Castle Rock");
+  const [receiverPhone, setReceiverPhone] = useState("");
+  const [qrImageUrl, setQrImageUrl] = useState("");
   const [monthlyAmount, setMonthlyAmount] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -23,8 +25,13 @@ export default function AdminSettings() {
       supabase.from("settings").select("value").eq("key", "monthly_amount").maybeSingle(),
     ]).then(([a, u, m]) => {
       if (a.data?.value) setLimit(String(a.data.value));
-      const upi = u.data?.value as { vpa?: string; payee_name?: string } | null;
-      if (upi) { setVpa(upi.vpa ?? ""); setPayeeName(upi.payee_name ?? "Ashirvaadh Castle Rock"); }
+      const upi = u.data?.value as { vpa?: string; payee_name?: string; receiver_phone?: string; qr_image_url?: string } | null;
+      if (upi) {
+        setVpa(upi.vpa ?? "");
+        setPayeeName(upi.payee_name ?? "Ashirvaadh Castle Rock");
+        setReceiverPhone(upi.receiver_phone ?? "");
+        setQrImageUrl(upi.qr_image_url ?? "");
+      }
       if (m.data?.value !== undefined && m.data.value !== null) setMonthlyAmount(String(m.data.value));
       setLoading(false);
     });
@@ -44,15 +51,39 @@ export default function AdminSettings() {
 
   const saveUpi = async () => {
     const trimmed = vpa.trim();
-    if (trimmed && !/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(trimmed)) {
+    if (trimmed && !/^[\w.-]{2,}@[a-zA-Z]{2,}$/.test(trimmed)) {
       toast.error("Enter a valid UPI ID (e.g. name@okhdfcbank)");
       return;
+    }
+    const trimmedPhone = receiverPhone.trim();
+    const normalizedPhone = trimmedPhone ? trimmedPhone.replace(/[^\d+]/g, "") : "";
+    if (normalizedPhone && !/^\+?\d{10,15}$/.test(normalizedPhone)) {
+      toast.error("Enter a valid payment phone number (10–15 digits)");
+      return;
+    }
+    const trimmedQr = qrImageUrl.trim();
+    if (trimmedQr) {
+      try {
+        new URL(trimmedQr);
+      } catch {
+        toast.error("QR image URL must be a valid link");
+        return;
+      }
     }
     setSavingUpi(true);
     const { error } = await supabase
       .from("settings")
       .upsert(
-        { key: "upi", value: { vpa: trimmed, payee_name: payeeName.trim() || "Ashirvaadh Castle Rock" }, updated_at: new Date().toISOString() },
+        {
+          key: "upi",
+          value: {
+            vpa: trimmed,
+            payee_name: payeeName.trim() || "Ashirvaadh Castle Rock",
+            receiver_phone: normalizedPhone,
+            qr_image_url: trimmedQr,
+          },
+          updated_at: new Date().toISOString(),
+        },
         { onConflict: "key" },
       );
     setSavingUpi(false);
@@ -111,7 +142,7 @@ export default function AdminSettings() {
       <div className="soft-card p-5">
         <h2 className="font-semibold mb-1">UPI for maintenance payments</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Residents pay directly to this UPI ID. No platform fees. You can update this anytime.
+          Residents can pay using UPI deep-link, pay-to-phone, or QR scan. You can update this anytime.
         </p>
         <div className="grid sm:grid-cols-2 gap-3 mb-3">
           <div className="space-y-1.5">
@@ -131,6 +162,30 @@ export default function AdminSettings() {
               placeholder="Ashirvaadh Castle Rock"
               value={payeeName}
               onChange={(e) => setPayeeName(e.target.value)}
+              className="rounded-xl"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="receiver_phone" className="flex items-center gap-1.5">
+              <Smartphone className="h-4 w-4" /> Payment phone number
+            </Label>
+            <Input
+              id="receiver_phone"
+              placeholder="+919876543210"
+              value={receiverPhone}
+              onChange={(e) => setReceiverPhone(e.target.value)}
+              className="rounded-xl"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="qr_url" className="flex items-center gap-1.5">
+              <QrCode className="h-4 w-4" /> QR image URL
+            </Label>
+            <Input
+              id="qr_url"
+              placeholder="https://.../society-upi-qr.png"
+              value={qrImageUrl}
+              onChange={(e) => setQrImageUrl(e.target.value)}
               className="rounded-xl"
             />
           </div>
