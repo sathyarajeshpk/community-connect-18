@@ -107,19 +107,41 @@ export default function AdminDataset() {
         })
         .filter(Boolean) as Array<{ plot_number: string; owner_name: string | null; email: string | null; phone: string | null }>;
 
-      if (normalized.length === 0) {
+      // Allow multiple users per plot, but ignore exact duplicate rows
+      const uniq = new Map<string, { plot_number: string; owner_name: string | null; email: string | null; phone: string | null }>();
+      for (const row of normalized) {
+        const key = [
+          row.plot_number.trim().toLowerCase(),
+          (row.owner_name ?? "").trim().toLowerCase(),
+          (row.email ?? "").trim().toLowerCase(),
+          (row.phone ?? "").trim().toLowerCase(),
+        ].join("|");
+        uniq.set(key, row);
+      }
+      const finalRows = Array.from(uniq.values());
+
+      if (finalRows.length === 0) {
         toast.error("No valid rows found. Expected columns: PlotNumber, OwnerName, Email, Phone");
         setUploading(false);
         return;
       }
 
-      // Upsert on plot_number — prevents duplicates on re-upload
+      // Replace dataset so re-upload remains idempotent while allowing duplicate plot numbers
+      const { error: delError } = await supabase
+        .from("dataset_entries")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      if (delError) {
+        toast.error(delError.message);
+        setUploading(false);
+        return;
+      }
       const { error } = await supabase
         .from("dataset_entries")
-        .upsert(normalized, { onConflict: "plot_number" });
+        .insert(finalRows);
 
       if (error) { toast.error(error.message); }
-      else { toast.success(`Imported / updated ${normalized.length} rows — no duplicates created`); load(); }
+      else { toast.success(`Imported ${finalRows.length} rows`); load(); }
     } catch (err) {
       toast.error((err as Error).message);
     } finally {

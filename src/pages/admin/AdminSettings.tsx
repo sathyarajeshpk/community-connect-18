@@ -9,7 +9,7 @@ import { Loader2, Save, IndianRupee } from "lucide-react";
 export default function AdminSettings() {
   const [limit, setLimit] = useState("7");
   const [vpa, setVpa] = useState("");
-  const [payeeName, setPayeeName] = useState("Residence");
+  const [payeeName, setPayeeName] = useState("Ashirvaadh Castle Rock");
   const [monthlyAmount, setMonthlyAmount] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -24,7 +24,7 @@ export default function AdminSettings() {
     ]).then(([a, u, m]) => {
       if (a.data?.value) setLimit(String(a.data.value));
       const upi = u.data?.value as { vpa?: string; payee_name?: string } | null;
-      if (upi) { setVpa(upi.vpa ?? ""); setPayeeName(upi.payee_name ?? "Residence"); }
+      if (upi) { setVpa(upi.vpa ?? ""); setPayeeName(upi.payee_name ?? "Ashirvaadh Castle Rock"); }
       if (m.data?.value !== undefined && m.data.value !== null) setMonthlyAmount(String(m.data.value));
       setLoading(false);
     });
@@ -52,7 +52,7 @@ export default function AdminSettings() {
     const { error } = await supabase
       .from("settings")
       .upsert(
-        { key: "upi", value: { vpa: trimmed, payee_name: payeeName.trim() || "Residence" }, updated_at: new Date().toISOString() },
+        { key: "upi", value: { vpa: trimmed, payee_name: payeeName.trim() || "Ashirvaadh Castle Rock" }, updated_at: new Date().toISOString() },
         { onConflict: "key" },
       );
     setSavingUpi(false);
@@ -128,7 +128,7 @@ export default function AdminSettings() {
             <Label htmlFor="payee">Payee name</Label>
             <Input
               id="payee"
-              placeholder="Residence"
+              placeholder="Ashirvaadh Castle Rock"
               value={payeeName}
               onChange={(e) => setPayeeName(e.target.value)}
               className="rounded-xl"

@@ -110,25 +110,31 @@ Deno.serve(async (req) => {
       return s;
     };
 
-    const dedupByPlot = new Map<string, { plot_number: string; owner_name: string | null; phone: string | null; email: string | null }>();
+    const dedupRows = new Map<string, { plot_number: string; owner_name: string | null; phone: string | null; email: string | null }>();
     for (const r of rows.slice(1)) {
       const plot = clean(r[iPlot]);
       if (!plot) continue;
-      dedupByPlot.set(plot, {
+      const next = {
         plot_number: plot,
         owner_name: iName >= 0 ? clean(r[iName]) : null,
         phone: iPhone >= 0 ? clean(r[iPhone]) : null,
         email: iEmail >= 0 ? clean(r[iEmail])?.toLowerCase() ?? null : null,
-      });
+      };
+      const dedupKey = [next.plot_number, next.owner_name ?? "", next.email ?? "", next.phone ?? ""]
+        .map((v) => String(v).trim().toLowerCase())
+        .join("|");
+      dedupRows.set(dedupKey, next);
     }
-    const entries = Array.from(dedupByPlot.values());
+    const entries = Array.from(dedupRows.values());
 
     if (entries.length === 0) {
       return new Response(JSON.stringify({ error: "No valid rows found" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { error: upsertErr } = await admin.from("dataset_entries").upsert(entries, { onConflict: "plot_number" });
-    if (upsertErr) throw upsertErr;
+    const { error: delErr } = await admin.from("dataset_entries").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    if (delErr) throw delErr;
+    const { error: insertErr } = await admin.from("dataset_entries").insert(entries);
+    if (insertErr) throw insertErr;
 
     // Update last sync time
     await admin.from("settings").upsert({ key: "google_sheet_last_sync", value: { at: new Date().toISOString(), count: entries.length } as any }, { onConflict: "key" });

@@ -24,7 +24,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="h-8 w-8 rounded-xl gradient-primary flex items-center justify-center shadow-soft">
               <Building2 className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold tracking-tight">Residence</span>
+            <span className="font-semibold tracking-tight">Ashirvaadh Castle Rock</span>
           </Link>
           <div className="flex items-center gap-2">
             {isAdmin && (
