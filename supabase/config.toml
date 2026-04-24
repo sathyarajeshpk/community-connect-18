@@ -1,1 +1,4 @@
 project_id = "mxfjpauvhitvnwdzmvud"
+
+[functions.sync-dataset-sheet]
+verify_jwt = true

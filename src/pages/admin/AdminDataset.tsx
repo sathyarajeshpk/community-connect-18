@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Upload, Loader2, Database, Trash2 } from "lucide-react";
+import { Upload, Loader2, Database, Trash2, RefreshCw, Save, Link2 } from "lucide-react";
 
 type Entry = {
   id: string;
@@ -18,21 +19,62 @@ export default function AdminDataset() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [sheetUrl, setSheetUrl] = useState("");
+  const [savedUrl, setSavedUrl] = useState("");
+  const [savingUrl, setSavingUrl] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<{ at: string; count: number } | null>(null);
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("dataset_entries")
-      .select("*")
-      .order("plot_number");
+    const [{ data: rows, error }, { data: urlSetting }, { data: syncSetting }] = await Promise.all([
+      supabase.from("dataset_entries").select("*").order("plot_number"),
+      supabase.from("settings").select("value").eq("key", "google_sheet_url").maybeSingle(),
+      supabase.from("settings").select("value").eq("key", "google_sheet_last_sync").maybeSingle(),
+    ]);
     if (error) toast.error(error.message);
-    setEntries((data ?? []) as Entry[]);
+    setEntries((rows ?? []) as Entry[]);
+    const url = urlSetting?.value
+      ? typeof urlSetting.value === "string"
+        ? urlSetting.value
+        : (urlSetting.value as { url?: string })?.url ?? ""
+      : "";
+    setSheetUrl(url);
+    setSavedUrl(url);
+    setLastSync((syncSetting?.value as { at: string; count: number } | null) ?? null);
     setLoading(false);
   };
 
   useEffect(() => {
     load();
   }, []);
+
+  const saveSheetUrl = async () => {
+    setSavingUrl(true);
+    const { error } = await supabase
+      .from("settings")
+      .upsert({ key: "google_sheet_url", value: sheetUrl as any }, { onConflict: "key" });
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Sheet URL saved");
+      setSavedUrl(sheetUrl);
+    }
+    setSavingUrl(false);
+  };
+
+  const syncNow = async () => {
+    setSyncing(true);
+    const { data, error } = await supabase.functions.invoke("sync-dataset-sheet");
+    if (error) {
+      toast.error(error.message);
+    } else if ((data as any)?.error) {
+      toast.error((data as any).error);
+    } else {
+      toast.success(`Synced ${(data as any).count} rows from Google Sheets`);
+      load();
+    }
+    setSyncing(false);
+  };
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -103,19 +145,70 @@ export default function AdminDataset() {
 
   return (
     <div className="space-y-5">
+      {/* Google Sheets sync card */}
+      <div className="soft-card p-5">
+        <div className="flex items-start gap-3">
+          <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <Link2 className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold">Sync from Google Sheets</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Paste a public Google Sheet URL (Anyone with the link → Viewer). Click Sync to replace the dataset.
+            </p>
+            <div className="mt-3 space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  type="url"
+                  placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=0"
+                  value={sheetUrl}
+                  onChange={(e) => setSheetUrl(e.target.value)}
+                  className="rounded-xl"
+                />
+                <Button
+                  onClick={saveSheetUrl}
+                  disabled={savingUrl || sheetUrl === savedUrl}
+                  variant="outline"
+                  className="rounded-xl shrink-0"
+                >
+                  {savingUrl ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Save
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  onClick={syncNow}
+                  disabled={syncing || !savedUrl}
+                  className="rounded-xl"
+                >
+                  {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Sync now
+                </Button>
+                {lastSync && (
+                  <p className="text-xs text-muted-foreground">
+                    Last sync: {new Date(lastSync.at).toLocaleString()} • {lastSync.count} rows
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Manual upload card */}
       <div className="soft-card p-5">
         <div className="flex items-start gap-3">
           <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
             <Database className="h-5 w-5" />
           </div>
           <div className="flex-1">
-            <p className="font-semibold">Resident dataset</p>
+            <p className="font-semibold">Manual upload (Excel / CSV)</p>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Upload an Excel/CSV with columns: <span className="font-mono">PlotNumber, OwnerName, Email, Phone</span>. Used to validate signups.
+              Columns: <span className="font-mono">PlotNumber, OwnerName, Email, Phone</span>. Appends to existing data.
             </p>
             <div className="flex gap-2 mt-4 flex-wrap">
               <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={onFile} />
-              <Button onClick={() => fileRef.current?.click()} disabled={uploading} className="rounded-xl">
+              <Button onClick={() => fileRef.current?.click()} disabled={uploading} variant="outline" className="rounded-xl">
                 {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                 Upload file
               </Button>
