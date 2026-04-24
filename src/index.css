@@ -8,27 +8,28 @@
 
 @layer base {
   :root {
-    --background: 220 30% 97%;
-    --foreground: 222 35% 14%;
+    /* Neumorphic light palette — soft, airy, low-contrast surfaces */
+    --background: 220 25% 94%;
+    --foreground: 222 25% 22%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 35% 14%;
+    --card: 220 25% 94%;
+    --card-foreground: 222 25% 22%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 35% 14%;
+    --popover-foreground: 222 25% 22%;
 
-    --primary: 222 65% 35%;
+    --primary: 222 55% 55%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 222 80% 60%;
+    --primary-glow: 222 75% 70%;
 
-    --secondary: 220 25% 94%;
-    --secondary-foreground: 222 35% 14%;
+    --secondary: 220 22% 92%;
+    --secondary-foreground: 222 25% 22%;
 
-    --muted: 220 20% 94%;
-    --muted-foreground: 222 15% 45%;
+    --muted: 220 22% 92%;
+    --muted-foreground: 222 12% 50%;
 
-    --accent: 168 60% 45%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 188 60% 60%;
+    --accent-foreground: 222 25% 22%;
 
     --success: 145 60% 42%;
     --success-foreground: 0 0% 100%;
@@ -38,32 +39,33 @@
     --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 20% 90%;
-    --input: 220 20% 90%;
-    --ring: 222 65% 35%;
+    --border: 220 20% 88%;
+    --input: 220 20% 88%;
+    --ring: 222 55% 55%;
 
-    --radius: 1rem;
+    --radius: 1.25rem;
 
-    /* Soft UI gradients & shadows */
-    --gradient-primary: linear-gradient(135deg, hsl(222 65% 35%), hsl(222 80% 55%));
-    --gradient-soft: linear-gradient(180deg, hsl(220 30% 99%), hsl(220 30% 95%));
-    --gradient-accent: linear-gradient(135deg, hsl(168 60% 45%), hsl(190 70% 50%));
+    /* Neumorphic gradients & dual-shadow tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(222 55% 60%), hsl(222 75% 72%));
+    --gradient-soft: linear-gradient(145deg, hsl(220 28% 96%), hsl(220 22% 90%));
+    --gradient-accent: linear-gradient(135deg, hsl(188 60% 65%), hsl(210 70% 72%));
 
-    --shadow-soft: 0 6px 20px -8px hsl(222 30% 30% / 0.12), 0 2px 6px -2px hsl(222 30% 30% / 0.06);
-    --shadow-elevated: 0 20px 50px -20px hsl(222 50% 25% / 0.20), 0 6px 16px -8px hsl(222 50% 25% / 0.10);
-    --shadow-inset: inset 2px 2px 6px hsl(220 20% 88% / 0.6), inset -2px -2px 6px hsl(0 0% 100% / 0.9);
-    --shadow-glow: 0 0 40px hsl(222 80% 60% / 0.25);
+    /* Two-tone shadows = neumorphism: dark bottom-right, light top-left */
+    --shadow-soft: 8px 8px 20px hsl(220 20% 80% / 0.55), -8px -8px 20px hsl(0 0% 100% / 0.95);
+    --shadow-elevated: 14px 14px 32px hsl(220 22% 76% / 0.6), -14px -14px 32px hsl(0 0% 100% / 0.95);
+    --shadow-inset: inset 5px 5px 10px hsl(220 20% 80% / 0.55), inset -5px -5px 10px hsl(0 0% 100% / 0.95);
+    --shadow-glow: 0 0 30px hsl(222 75% 70% / 0.35);
 
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 35% 14%;
-    --sidebar-primary: 222 65% 35%;
+    --sidebar-background: 220 25% 94%;
+    --sidebar-foreground: 222 25% 22%;
+    --sidebar-primary: 222 55% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 25% 94%;
-    --sidebar-accent-foreground: 222 35% 14%;
-    --sidebar-border: 220 20% 90%;
-    --sidebar-ring: 222 65% 35%;
+    --sidebar-accent: 220 22% 92%;
+    --sidebar-accent-foreground: 222 25% 22%;
+    --sidebar-border: 220 20% 88%;
+    --sidebar-ring: 222 55% 55%;
   }
 
   .dark {
@@ -134,12 +136,19 @@
 
 @layer components {
   .soft-card {
-    @apply bg-card rounded-2xl border border-border/50;
+    @apply bg-card rounded-3xl;
     box-shadow: var(--shadow-soft);
     transition: var(--transition-smooth);
   }
   .soft-card:hover {
     box-shadow: var(--shadow-elevated);
+  }
+  .neu-inset {
+    @apply bg-card rounded-2xl;
+    box-shadow: var(--shadow-inset);
+  }
+  .neu-pressed:active {
+    box-shadow: var(--shadow-inset);
   }
   .gradient-primary {
     background: var(--gradient-primary);
