@@ -17,7 +17,7 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
         </div>
       </main>
       <footer className="text-center text-xs text-muted-foreground pb-6">
-        Residence · Community Management
+        Ashirvaadh Castle Rock · Community Management
       </footer>
     </div>
   );

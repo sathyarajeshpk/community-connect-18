@@ -8,6 +8,7 @@ export const signupSchema = z
       .string()
       .trim()
       .regex(/^[+0-9\s-]{7,20}$/, "Invalid phone number"),
+    plotNumber: z.string().trim().min(1, "Plot number is required").max(30),
     password: z.string().min(8, "Min 8 characters").max(72),
     confirmPassword: z.string(),
   })

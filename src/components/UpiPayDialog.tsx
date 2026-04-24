@@ -115,7 +115,7 @@ export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName,
     if (!settings?.vpa) return "";
     const params = new URLSearchParams({
       pa: settings.vpa,
-      pn: settings.payee_name || "Residence",
+      pn: settings.payee_name || "Ashirvaadh Castle Rock",
       cu: "INR",
     });
     if (amount && Number(amount) > 0) params.set("am", String(Number(amount).toFixed(2)));
@@ -193,7 +193,7 @@ export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName,
               <>
                 <div className="neu-inset p-3 text-sm">
                   <p className="text-muted-foreground text-xs mb-1">Paying to</p>
-                  <p className="font-medium">{settings.payee_name || "Residence"}</p>
+                  <p className="font-medium">{settings.payee_name || "Ashirvaadh Castle Rock"}</p>
                   <p className="text-xs text-muted-foreground">{settings.vpa}</p>
                 </div>
 

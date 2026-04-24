@@ -14,7 +14,7 @@ self.addEventListener("push", (event) => {
   } catch (e) {
     data = { title: "Notification", body: event.data ? event.data.text() : "" };
   }
-  const title = data.title || "Residence";
+  const title = data.title || "Ashirvaadh Castle Rock";
   const options = {
     body: data.body || "",
     tag: data.tag,

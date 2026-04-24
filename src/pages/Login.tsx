@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
-import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { AuthShell } from "@/components/AuthShell";
@@ -54,8 +53,9 @@ export default function Login() {
       return;
     }
 
-    toast.info("Your account is pending admin approval.");
-    navigate("/pending");
+    await supabase.auth.signOut();
+    toast.info("Your account is pending admin approval. Please try again after an admin approves you.");
+    navigate("/auth", { replace: true });
   };
 
   return (

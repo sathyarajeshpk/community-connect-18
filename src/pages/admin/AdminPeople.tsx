@@ -196,11 +196,9 @@ export default function AdminPeople() {
     setDeleting(true);
     try {
       if (deleteTarget.source === "profile" && deleteTarget.profile_id) {
-        // Remove plot_id first
-        await supabase.from("profiles").update({ plot_id: null }).eq("id", deleteTarget.profile_id);
-        const { error } = await supabase.from("profiles").delete().eq("id", deleteTarget.profile_id);
+        const { error } = await supabase.rpc("admin_delete_user", { _user_id: deleteTarget.profile_id });
         if (error) throw error;
-        toast.success("Resident removed");
+        toast.success("User removed");
       } else if (deleteTarget.source === "dataset" && deleteTarget.dataset_id) {
         const { error } = await supabase.from("dataset_entries").delete().eq("id", deleteTarget.dataset_id);
         if (error) throw error;
