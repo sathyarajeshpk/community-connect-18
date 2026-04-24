@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +11,9 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Pending from "./pages/Pending";
 import Dashboard from "./pages/Dashboard";
+import Announcements from "./pages/Announcements";
+import Complaints from "./pages/Complaints";
+import Directory from "./pages/Directory";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminApprovals from "./pages/admin/AdminApprovals";
 import AdminDataset from "./pages/admin/AdminDataset";
@@ -32,14 +35,10 @@ const App = () => (
             <Route path="/auth" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/pending" element={<Pending />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
+            <Route path="/complaints" element={<ProtectedRoute><Complaints /></ProtectedRoute>} />
+            <Route path="/directory" element={<ProtectedRoute><Directory /></ProtectedRoute>} />
             <Route
               path="/admin"
               element={
