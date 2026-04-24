@@ -21,14 +21,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-gradient-soft">
       <header className="sticky top-0 z-30 backdrop-blur-xl bg-background/70 border-b border-border/50">
-        <div className="mx-auto max-w-5xl px-5 h-14 flex items-center justify-between">
+        <div className="mx-auto max-w-5xl px-4 h-12 flex items-center justify-between">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-xl gradient-primary flex items-center justify-center shadow-soft">
-              <Building2 className="h-4 w-4 text-primary-foreground" />
+            <div className="h-7 w-7 rounded-lg gradient-primary flex items-center justify-center shadow-soft">
+              <Building2 className="h-3.5 w-3.5 text-primary-foreground" />
             </div>
             <span className="font-semibold tracking-tight flex items-center gap-1.5">
               Ashirvaadh Castle Rock
-              <Sparkles className="h-3.5 w-3.5 text-warning" />
+              <Sparkles className="h-3 w-3 text-warning" />
             </span>
           </Link>
           <div className="flex items-center gap-2">
@@ -59,10 +59,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-5 pt-6 pb-28 animate-fade-in">{children}</main>
+      <main className="mx-auto max-w-5xl px-4 pt-4 pb-24 animate-fade-in">{children}</main>
 
       <nav className="fixed bottom-0 inset-x-0 z-30 bg-background/85 backdrop-blur-xl border-t border-border/50 pb-[env(safe-area-inset-bottom)]">
-        <div className="mx-auto max-w-5xl px-2 grid grid-cols-4 h-16">
+        <div className="mx-auto max-w-5xl px-2 grid grid-cols-4 h-14">
           {navItems.map((item) => {
             const active = location.pathname === item.to;
             const Icon = item.icon;
@@ -70,16 +70,16 @@ export function AppShell({ children }: { children: ReactNode }) {
               <button
                 key={item.to}
                 onClick={() => navigate(item.to)}
-                className={`flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors ${
+                className={`flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors ${
                   active ? "text-primary" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <span
-                  className={`h-8 w-8 rounded-xl flex items-center justify-center transition-all ${
+                  className={`h-7 w-7 rounded-lg flex items-center justify-center transition-all ${
                     active ? "gradient-primary text-primary-foreground shadow-soft" : "bg-secondary text-muted-foreground"
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-3.5 w-3.5" />
                 </span>
                 {item.label}
               </button>
