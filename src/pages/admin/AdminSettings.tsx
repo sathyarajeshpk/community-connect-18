@@ -8,19 +8,25 @@ import { Loader2, Save } from "lucide-react";
 
 export default function AdminSettings() {
   const [limit, setLimit] = useState("7");
+  const [vpa, setVpa] = useState("");
+  const [payeeName, setPayeeName] = useState("Residence");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingUpi, setSavingUpi] = useState(false);
 
   useEffect(() => {
-    supabase
-      .from("settings")
-      .select("value")
-      .eq("key", "admin_limit")
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.value) setLimit(String(data.value));
-        setLoading(false);
-      });
+    Promise.all([
+      supabase.from("settings").select("value").eq("key", "admin_limit").maybeSingle(),
+      supabase.from("settings").select("value").eq("key", "upi").maybeSingle(),
+    ]).then(([a, u]) => {
+      if (a.data?.value) setLimit(String(a.data.value));
+      const upi = u.data?.value as { vpa?: string; payee_name?: string } | null;
+      if (upi) {
+        setVpa(upi.vpa ?? "");
+        setPayeeName(upi.payee_name ?? "Residence");
+      }
+      setLoading(false);
+    });
   }, []);
 
   const save = async () => {
@@ -37,6 +43,28 @@ export default function AdminSettings() {
     setSaving(false);
     if (error) toast.error(error.message);
     else toast.success("Saved");
+  };
+
+  const saveUpi = async () => {
+    const trimmed = vpa.trim();
+    if (trimmed && !/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(trimmed)) {
+      toast.error("Enter a valid UPI ID (e.g. name@okhdfcbank)");
+      return;
+    }
+    setSavingUpi(true);
+    const { error } = await supabase
+      .from("settings")
+      .upsert(
+        {
+          key: "upi",
+          value: { vpa: trimmed, payee_name: payeeName.trim() || "Residence" },
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "key" },
+      );
+    setSavingUpi(false);
+    if (error) toast.error(error.message);
+    else toast.success("UPI details saved");
   };
 
   if (loading) {
@@ -64,6 +92,7 @@ export default function AdminSettings() {
               max={50}
               value={limit}
               onChange={(e) => setLimit(e.target.value)}
+              className="rounded-xl"
             />
           </div>
           <Button onClick={save} disabled={saving} className="rounded-xl">
@@ -74,10 +103,36 @@ export default function AdminSettings() {
       </div>
 
       <div className="soft-card p-5">
-        <h2 className="font-semibold mb-1">Monthly maintenance amounts</h2>
-        <p className="text-sm text-muted-foreground">
-          Coming in the payments phase — set per-month amounts and generate bills automatically.
+        <h2 className="font-semibold mb-1">UPI for maintenance payments</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Residents will pay directly to this UPI ID via their preferred app — no platform fees.
         </p>
+        <div className="grid sm:grid-cols-2 gap-3 mb-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="vpa">UPI ID (VPA)</Label>
+            <Input
+              id="vpa"
+              placeholder="society@okhdfcbank"
+              value={vpa}
+              onChange={(e) => setVpa(e.target.value)}
+              className="rounded-xl"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="payee">Payee name</Label>
+            <Input
+              id="payee"
+              placeholder="Residence"
+              value={payeeName}
+              onChange={(e) => setPayeeName(e.target.value)}
+              className="rounded-xl"
+            />
+          </div>
+        </div>
+        <Button onClick={saveUpi} disabled={savingUpi} className="rounded-xl">
+          {savingUpi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          Save UPI details
+        </Button>
       </div>
     </div>
   );

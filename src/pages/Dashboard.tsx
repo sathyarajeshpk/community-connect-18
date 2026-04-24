@@ -1,12 +1,15 @@
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { AppShell } from "@/components/AppShell";
 import { PushToggle } from "@/components/PushToggle";
+import { UpiPayDialog } from "@/components/UpiPayDialog";
 import { Link } from "react-router-dom";
 import { Receipt, Megaphone, MessageSquare, Sparkles, Users, Bell, Shield } from "lucide-react";
 
 export default function Dashboard() {
   const { profile, isAdmin } = useAuth();
   const firstName = profile?.name?.split(" ")[0] ?? "Resident";
+  const [payOpen, setPayOpen] = useState(false);
 
   const liveCards = [
     { to: "/announcements", icon: Megaphone, label: "Announcements", desc: "Latest community updates", color: "from-accent to-primary-glow" },
@@ -70,17 +73,22 @@ export default function Dashboard() {
             </Link>
           );
         })}
-        <div className="soft-card p-4 flex items-center gap-4 opacity-70">
+        <button
+          onClick={() => setPayOpen(true)}
+          className="soft-card p-4 flex items-center gap-4 text-left active:scale-[0.99] transition-transform"
+        >
           <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center text-primary-foreground shadow-soft">
             <Receipt className="h-5 w-5" />
           </div>
           <div className="flex-1">
-            <p className="font-medium">Maintenance dues</p>
-            <p className="text-sm text-muted-foreground">Pay monthly dues — coming next</p>
+            <p className="font-medium">Pay maintenance</p>
+            <p className="text-sm text-muted-foreground">Pay directly via your UPI app</p>
           </div>
-          <span className="text-xs uppercase tracking-wide text-muted-foreground">Soon</span>
-        </div>
+          <span className="text-xs uppercase tracking-wide text-primary font-semibold">UPI</span>
+        </button>
       </section>
+
+      <UpiPayDialog open={payOpen} onOpenChange={setPayOpen} payerName={profile?.name} />
     </AppShell>
   );
 }
