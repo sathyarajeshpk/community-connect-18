@@ -25,6 +25,7 @@ type Payment = {
   amount: number;
   month: string;
   utr_ref: string | null;
+  proof_url: string | null;
   status: "pending" | "confirmed" | "rejected";
   notes: string | null;
   created_at: string;
@@ -149,7 +150,7 @@ export default function AdminPayments() {
 
   const exportCSV = () => {
     const rows = [
-      ["Plot", "Payer", "Month", "Amount (₹)", "Status", "UTR Ref", "Date"],
+      ["Plot", "Payer", "Month", "Amount (₹)", "Status", "UTR Ref", "Proof URL", "Date"],
       ...filtered.map((p) => [
         p.plot_number,
         p.payer_name ?? "",
@@ -157,6 +158,7 @@ export default function AdminPayments() {
         p.amount.toFixed(2),
         p.status,
         p.utr_ref ?? "",
+        p.proof_url ?? "",
         new Date(p.created_at).toLocaleString(),
       ]),
     ];
@@ -292,6 +294,7 @@ export default function AdminPayments() {
                       <th className="text-left px-4 py-3">Month</th>
                       <th className="text-right px-4 py-3">Amount</th>
                       <th className="text-left px-4 py-3">UTR / Ref</th>
+                      <th className="text-left px-4 py-3">Proof</th>
                       <th className="text-left px-4 py-3">Status</th>
                       <th className="text-left px-4 py-3">Date</th>
                       <th className="px-4 py-3"></th>
@@ -305,6 +308,9 @@ export default function AdminPayments() {
                         <td className="px-4 py-3">{fmtMonth(p.month)}</td>
                         <td className="px-4 py-3 text-right font-medium">₹{Number(p.amount).toLocaleString("en-IN")}</td>
                         <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{p.utr_ref ?? "—"}</td>
+                        <td className="px-4 py-3 text-xs">
+                          {p.proof_url ? <a href={p.proof_url} target="_blank" rel="noreferrer" className="text-primary underline">View</a> : "—"}
+                        </td>
                         <td className="px-4 py-3">{statusBadge(p.status)}</td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">{new Date(p.created_at).toLocaleDateString()}</td>
                         <td className="px-4 py-3">
@@ -441,6 +447,12 @@ export default function AdminPayments() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">UTR</span>
                     <span className="font-mono text-xs">{actionTarget.payment.utr_ref}</span>
+                  </div>
+                )}
+                {actionTarget.payment.proof_url && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">Screenshot</span>
+                    <a href={actionTarget.payment.proof_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Open proof</a>
                   </div>
                 )}
               </div>

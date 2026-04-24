@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ThemeProvider } from "@/components/theme-provider";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
@@ -26,40 +27,42 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/pending" element={<Pending />} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
-            <Route path="/complaints" element={<ProtectedRoute><Complaints /></ProtectedRoute>} />
-            <Route path="/directory" element={<ProtectedRoute><Directory /></ProtectedRoute>} />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<AdminApprovals />} />
-              <Route path="dataset" element={<AdminDataset />} />
-              <Route path="people" element={<AdminPeople />} />
-              <Route path="payments" element={<AdminPayments />} />
-              <Route path="admins" element={<AdminAdmins />} />
-              <Route path="settings" element={<AdminSettings />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/pending" element={<Pending />} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
+              <Route path="/complaints" element={<ProtectedRoute><Complaints /></ProtectedRoute>} />
+              <Route path="/directory" element={<ProtectedRoute><Directory /></ProtectedRoute>} />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<AdminApprovals />} />
+                <Route path="dataset" element={<AdminDataset />} />
+                <Route path="people" element={<AdminPeople />} />
+                <Route path="payments" element={<AdminPayments />} />
+                <Route path="admins" element={<AdminAdmins />} />
+                <Route path="settings" element={<AdminSettings />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

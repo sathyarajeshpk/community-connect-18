@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Loader2, CheckCircle2, ChevronLeft } from "lucide-react";
+import { Loader2, CheckCircle2, ChevronLeft, Copy, QrCode, Smartphone, UploadCloud, ExternalLink, Sparkles } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -19,6 +19,8 @@ interface Props {
 interface UpiSettings {
   vpa: string;
   payee_name: string;
+  receiver_phone?: string;
+  qr_image_url?: string;
 }
 
 const APPS: { key: string; label: string; scheme: string; color: string }[] = [
@@ -65,6 +67,7 @@ export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName,
   const [recording, setRecording] = useState(false);
   const [done, setDone] = useState(false);
   const [paymentRef, setPaymentRef] = useState("");
+  const [proofFile, setProofFile] = useState<File | null>(null);
 
   // Build last-6-months list for month selector
   const monthOptions = Array.from({ length: 6 }, (_, i) => {
@@ -79,7 +82,7 @@ export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName,
   }
 
   useEffect(() => {
-    if (!open) { setStep("pay"); setUtrRef(""); setDone(false); return; }
+    if (!open) { setStep("pay"); setUtrRef(""); setDone(false); setProofFile(null); return; }
     setLoadingSettings(true);
     // Also load monthly amount from settings
     Promise.all([
@@ -132,6 +135,15 @@ export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName,
     setTimeout(() => setStep("record"), 1500);
   };
 
+  const copyToClipboard = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${label} copied`);
+    } catch {
+      toast.error(`Could not copy ${label.toLowerCase()}`);
+    }
+  };
+
   const recordPayment = async () => {
     if (!user) return;
     const resolvedPlot = plotNumber ?? profile?.plot_id ?? null;
@@ -140,14 +152,34 @@ export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName,
       return;
     }
     if (!amount || Number(amount) <= 0) { toast.error("Enter the amount paid"); return; }
+    if (!utrRef.trim()) {
+      toast.error("UTR / transaction reference is mandatory.");
+      return;
+    }
     setRecording(true);
+    let proofUrl: string | null = null;
+    if (proofFile) {
+      const ext = proofFile.name.split(".").pop() || "jpg";
+      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("payment-proofs").upload(path, proofFile, {
+        contentType: proofFile.type || "image/jpeg",
+      });
+      if (uploadError) {
+        setRecording(false);
+        toast.error(uploadError.message);
+        return;
+      }
+      const { data: publicData } = supabase.storage.from("payment-proofs").getPublicUrl(path);
+      proofUrl = publicData.publicUrl;
+    }
     const { error } = await supabase.from("maintenance_payments").insert({
       plot_number: resolvedPlot,
       paid_by: user.id,
       payer_name: payerName ?? profile?.name ?? null,
       amount: Number(amount),
       month: selectedMonth,
-      utr_ref: utrRef.trim() || null,
+      utr_ref: utrRef.trim(),
+      proof_url: proofUrl,
       status: "pending",
     });
     setRecording(false);
@@ -196,6 +228,26 @@ export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName,
                   <p className="font-medium">{settings.payee_name || "Ashirvaadh Castle Rock"}</p>
                   <p className="text-xs text-muted-foreground">{settings.vpa}</p>
                 </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {settings.receiver_phone ? (
+                    <div className="soft-card p-3 border border-border/60">
+                      <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5"><Smartphone className="h-3.5 w-3.5" /> Pay via phone number</p>
+                      <p className="font-medium">{settings.receiver_phone}</p>
+                      <Button variant="secondary" size="sm" className="mt-2 rounded-lg gap-1.5" onClick={() => settings.receiver_phone && copyToClipboard(settings.receiver_phone, "Phone number")}>
+                        <Copy className="h-3.5 w-3.5" /> Copy
+                      </Button>
+                    </div>
+                  ) : null}
+                  {settings.qr_image_url ? (
+                    <div className="soft-card p-3 border border-border/60">
+                      <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5"><QrCode className="h-3.5 w-3.5" /> Pay via QR code</p>
+                      <img src={settings.qr_image_url} alt="Society UPI QR code" className="rounded-lg h-28 w-28 object-cover border border-border" />
+                      <a href={settings.qr_image_url} target="_blank" rel="noreferrer" className="text-xs text-primary inline-flex items-center gap-1 mt-2">
+                        Open full QR <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    </div>
+                  ) : null}
+                </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -223,6 +275,10 @@ export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName,
                     </button>
                   ))}
                 </div>
+                <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 mt-0.5 text-warning" />
+                  If your app blocks gallery QR payments, use <span className="font-medium">mobile number</span> or scan the QR directly from another screen/device.
+                </p>
 
                 <button
                   onClick={() => setStep("record")}
@@ -258,15 +314,27 @@ export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName,
               <div className="space-y-1.5">
                 <Label htmlFor="utr">UTR / Ref no.</Label>
                 <Input id="utr" value={utrRef} onChange={(e) => setUtrRef(e.target.value)}
-                  className="rounded-xl" placeholder="Transaction ID" />
+                  className="rounded-xl" placeholder="Transaction ID" required />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="proof" className="flex items-center gap-1.5">
+                <UploadCloud className="h-4 w-4" /> Payment screenshot (optional)
+              </Label>
+              <Input
+                id="proof"
+                type="file"
+                accept="image/*"
+                className="rounded-xl"
+                onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+              />
             </div>
             {paymentRef ? (
               <p className="text-xs text-muted-foreground">
                 Tracking ref used in payment link: <span className="font-medium text-foreground">{paymentRef}</span>
               </p>
             ) : null}
-            <p className="text-xs text-muted-foreground">UTR helps the admin verify your payment quickly. Find it in your UPI app's transaction history.</p>
+            <p className="text-xs text-muted-foreground">UTR is mandatory. It will be auto-filled if your UPI app returns it; otherwise paste it manually from your transaction history.</p>
             <p className="text-xs text-muted-foreground">If your UPI app sends a callback with transaction details, we auto-fill this field.</p>
             <Button onClick={recordPayment} disabled={recording} className="w-full rounded-xl h-11">
               {recording ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}

@@ -1,11 +1,13 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Building2, Home, Megaphone, MessageSquare, Users, LogOut, Shield } from "lucide-react";
+import { useTheme } from "next-themes";
+import { Building2, Home, Megaphone, MessageSquare, Users, LogOut, Shield, Moon, Sun, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { isAdmin, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -24,9 +26,21 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="h-8 w-8 rounded-xl gradient-primary flex items-center justify-center shadow-soft">
               <Building2 className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold tracking-tight">Ashirvaadh Castle Rock</span>
+            <span className="font-semibold tracking-tight flex items-center gap-1.5">
+              Ashirvaadh Castle Rock
+              <Sparkles className="h-3.5 w-3.5 text-warning" />
+            </span>
           </Link>
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-xl"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
             {isAdmin && (
               <Button
                 variant="ghost"
@@ -56,11 +70,17 @@ export function AppShell({ children }: { children: ReactNode }) {
               <button
                 key={item.to}
                 onClick={() => navigate(item.to)}
-                className={`flex flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors ${
+                className={`flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors ${
                   active ? "text-primary" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Icon className="h-5 w-5" />
+                <span
+                  className={`h-8 w-8 rounded-xl flex items-center justify-center transition-all ${
+                    active ? "gradient-primary text-primary-foreground shadow-soft" : "bg-secondary text-muted-foreground"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
                 {item.label}
               </button>
             );
