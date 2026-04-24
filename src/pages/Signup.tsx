@@ -17,6 +17,7 @@ export default function Signup() {
     name: "",
     email: "",
     phone: "",
+    plotNumber: "",
     password: "",
     confirmPassword: "",
   });
@@ -40,7 +41,7 @@ export default function Signup() {
       password: parsed.data.password,
       options: {
         emailRedirectTo: `${window.location.origin}/dashboard`,
-        data: { name: parsed.data.name, phone: parsed.data.phone },
+        data: { name: parsed.data.name, phone: parsed.data.phone, plot_number: parsed.data.plotNumber },
       },
     });
     if (error) {
@@ -59,8 +60,9 @@ export default function Signup() {
     }
 
     setSubmitting(false);
-    toast.success("Account created. Awaiting admin approval.");
-    navigate("/pending");
+    await supabase.auth.signOut();
+    toast.success("Account created. Awaiting admin approval. Please sign in after approval.");
+    navigate("/auth");
   };
 
   return (
@@ -78,6 +80,10 @@ export default function Signup() {
           <div className="space-y-1.5">
             <Label htmlFor="phone">Phone</Label>
             <Input id="phone" type="tel" autoComplete="tel" value={form.phone} onChange={setField("phone")} placeholder="+91 98765 43210" required />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="plotNumber">Plot number</Label>
+            <Input id="plotNumber" value={form.plotNumber} onChange={setField("plotNumber")} placeholder="e.g. A-102" required />
           </div>
         </div>
         <div className="space-y-1.5">

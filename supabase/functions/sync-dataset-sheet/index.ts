@@ -54,9 +54,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Admin only" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Get sheet URL from settings
+    const payload = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const payloadSheetUrl = typeof payload?.sheet_url === "string" ? payload.sheet_url.trim() : "";
+
+    // Get sheet URL from request payload (preferred) or settings fallback
     const { data: setting } = await admin.from("settings").select("value").eq("key", "google_sheet_url").maybeSingle();
-    const sheetUrl = setting?.value ? (typeof setting.value === "string" ? setting.value : (setting.value as any).url) : null;
+    const settingSheetUrl = setting?.value ? (typeof setting.value === "string" ? setting.value : (setting.value as any).url) : null;
+    const sheetUrl = payloadSheetUrl || settingSheetUrl;
     if (!sheetUrl) {
       return new Response(JSON.stringify({ error: "No Google Sheet URL configured" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -106,22 +110,25 @@ Deno.serve(async (req) => {
       return s;
     };
 
-    const entries = rows.slice(1).map((r) => ({
-      plot_number: clean(r[iPlot]),
-      owner_name: iName >= 0 ? clean(r[iName]) : null,
-      phone: iPhone >= 0 ? clean(r[iPhone]) : null,
-      email: iEmail >= 0 ? clean(r[iEmail])?.toLowerCase() ?? null : null,
-    })).filter((e) => e.plot_number);
+    const dedupByPlot = new Map<string, { plot_number: string; owner_name: string | null; phone: string | null; email: string | null }>();
+    for (const r of rows.slice(1)) {
+      const plot = clean(r[iPlot]);
+      if (!plot) continue;
+      dedupByPlot.set(plot, {
+        plot_number: plot,
+        owner_name: iName >= 0 ? clean(r[iName]) : null,
+        phone: iPhone >= 0 ? clean(r[iPhone]) : null,
+        email: iEmail >= 0 ? clean(r[iEmail])?.toLowerCase() ?? null : null,
+      });
+    }
+    const entries = Array.from(dedupByPlot.values());
 
     if (entries.length === 0) {
       return new Response(JSON.stringify({ error: "No valid rows found" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Replace dataset
-    const { error: delErr } = await admin.from("dataset_entries").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    if (delErr) throw delErr;
-    const { error: insErr } = await admin.from("dataset_entries").insert(entries);
-    if (insErr) throw insErr;
+    const { error: upsertErr } = await admin.from("dataset_entries").upsert(entries, { onConflict: "plot_number" });
+    if (upsertErr) throw upsertErr;
 
     // Update last sync time
     await admin.from("settings").upsert({ key: "google_sheet_last_sync", value: { at: new Date().toISOString(), count: entries.length } as any }, { onConflict: "key" });

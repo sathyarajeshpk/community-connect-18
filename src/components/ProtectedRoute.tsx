@@ -24,6 +24,11 @@ export function ProtectedRoute({ children, requireAdmin }: Props) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
+  // A signed-in non-admin without a profile must not access app content yet.
+  if (!profile && !isAdmin) {
+    return <Navigate to="/pending" replace />;
+  }
+
   if (profile && profile.status !== "approved" && !isAdmin) {
     return <Navigate to="/pending" replace />;
   }

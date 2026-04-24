@@ -7,8 +7,9 @@ import { Loader2, Search, Phone, MapPin, X } from "lucide-react";
 type Resident = {
   id: string;
   name: string;
+  email: string | null;
   phone: string | null;
-  plot_number: string | null;
+  plot_number: string;
 };
 
 export default function Directory() {
@@ -19,18 +20,18 @@ export default function Directory() {
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase
-        .from("profiles")
-        .select("id, name, phone, plot:plots(plot_number)")
-        .eq("status", "approved")
-        .order("name");
+        .from("dataset_entries")
+        .select("id, owner_name, email, phone, plot_number")
+        .order("plot_number");
 
       if (!error) {
         setResidents(
           (data ?? []).map((p) => ({
             id: p.id,
-            name: p.name,
+            name: p.owner_name ?? "Unknown",
+            email: p.email,
             phone: p.phone,
-            plot_number: (p as { plot?: { plot_number: string } | null }).plot?.plot_number ?? null,
+            plot_number: p.plot_number,
           })),
         );
       }
@@ -43,8 +44,9 @@ export default function Directory() {
     if (!s) return true;
     return (
       r.name.toLowerCase().includes(s) ||
-      (r.plot_number ?? "").toLowerCase().includes(s) ||
-      (r.phone ?? "").includes(s)
+      r.plot_number.toLowerCase().includes(s) ||
+      (r.phone ?? "").includes(s) ||
+      (r.email ?? "").toLowerCase().includes(s)
     );
   });
 
@@ -52,7 +54,7 @@ export default function Directory() {
     <AppShell>
       <section className="mb-5">
         <h1 className="text-2xl font-semibold tracking-tight">Residents</h1>
-        <p className="text-sm text-muted-foreground mt-1">All approved residents in the community.</p>
+        <p className="text-sm text-muted-foreground mt-1">Community contacts by plot number.</p>
       </section>
 
       <div className="relative mb-4">
@@ -60,7 +62,7 @@ export default function Directory() {
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search by name, plot, phone"
+          placeholder="Search by name, plot, phone, email"
           className="pl-9 pr-9 rounded-xl h-11"
         />
         {q && (
@@ -87,9 +89,12 @@ export default function Directory() {
                 <div className="min-w-0">
                   <p className="font-medium truncate">{r.name}</p>
                   <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
-                    {r.plot_number && (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <MapPin className="h-3 w-3" />Plot {r.plot_number}
+                    </span>
+                    {r.email && (
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                        <MapPin className="h-3 w-3" />Plot {r.plot_number}
+                        {r.email}
                       </span>
                     )}
                     {r.phone && (

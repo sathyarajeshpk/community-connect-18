@@ -10,6 +10,7 @@ type Row = {
   id: string;
   name: string;
   email: string | null;
+  status: "resident_pending" | "external_pending" | "approved" | "rejected";
   is_admin: boolean;
 };
 
@@ -23,7 +24,7 @@ export default function AdminAdmins() {
   const load = async () => {
     setLoading(true);
     const [{ data: profiles }, { data: roles }, { data: setting }] = await Promise.all([
-      supabase.from("profiles").select("id, name, email").eq("status", "approved").order("name"),
+      supabase.from("profiles").select("id, name, email, status").neq("status", "rejected").order("name"),
       supabase.from("user_roles").select("user_id, role").eq("role", "admin"),
       supabase.from("settings").select("value").eq("key", "admin_limit").maybeSingle(),
     ]);
@@ -33,6 +34,7 @@ export default function AdminAdmins() {
         id: p.id,
         name: p.name,
         email: p.email,
+        status: p.status,
         is_admin: adminIds.has(p.id),
       })),
     );
@@ -99,6 +101,11 @@ export default function AdminAdmins() {
                   <p className="font-medium truncate">{r.name}</p>
                   {r.is_admin && <Badge className="bg-primary/10 text-primary border-0">Admin</Badge>}
                   {r.id === user?.id && <Badge variant="outline">You</Badge>}
+                  {!r.is_admin && r.status !== "approved" && (
+                    <Badge variant="secondary" className="border-0">
+                      {r.status === "resident_pending" ? "Pending resident" : "Pending external"}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground truncate">{r.email}</p>
               </div>
