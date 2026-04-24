@@ -28,14 +28,34 @@ export default function Login() {
       return;
     }
     setSubmitting(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
     setSubmitting(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success("Welcome back");
-    navigate("/dashboard");
+
+    const userId = data.user?.id;
+    if (!userId) {
+      toast.error("Could not load your account. Please try again.");
+      return;
+    }
+
+    const [{ data: prof }, { data: roles }] = await Promise.all([
+      supabase.from("profiles").select("status").eq("id", userId).maybeSingle(),
+      supabase.from("user_roles").select("role").eq("user_id", userId),
+    ]);
+    const isAdmin = !!roles?.some((r) => r.role === "admin");
+    const isApproved = prof?.status === "approved";
+
+    if (isAdmin || isApproved) {
+      toast.success("Welcome back");
+      navigate("/dashboard");
+      return;
+    }
+
+    toast.info("Your account is pending admin approval.");
+    navigate("/pending");
   };
 
   return (

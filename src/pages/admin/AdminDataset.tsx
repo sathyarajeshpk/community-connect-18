@@ -59,8 +59,13 @@ export default function AdminDataset() {
 
   const syncNow = async () => {
     setSyncing(true);
-    const { data, error } = await supabase.functions.invoke("sync-dataset-sheet");
-    if (error) { toast.error(error.message); }
+    const { data, error } = await supabase.functions.invoke("sync-dataset-sheet", {
+      body: { sheet_url: savedUrl || sheetUrl },
+    });
+    if (error) {
+      const details = await error.context?.text().catch(() => "");
+      toast.error(details || error.message);
+    }
     else if ((data as any)?.error) { toast.error((data as any).error); }
     else { toast.success(`Synced ${(data as any).count} rows`); load(); }
     setSyncing(false);

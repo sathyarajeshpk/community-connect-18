@@ -54,9 +54,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Admin only" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Get sheet URL from settings
+    const payload = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const payloadSheetUrl = typeof payload?.sheet_url === "string" ? payload.sheet_url.trim() : "";
+
+    // Get sheet URL from request payload (preferred) or settings fallback
     const { data: setting } = await admin.from("settings").select("value").eq("key", "google_sheet_url").maybeSingle();
-    const sheetUrl = setting?.value ? (typeof setting.value === "string" ? setting.value : (setting.value as any).url) : null;
+    const settingSheetUrl = setting?.value ? (typeof setting.value === "string" ? setting.value : (setting.value as any).url) : null;
+    const sheetUrl = payloadSheetUrl || settingSheetUrl;
     if (!sheetUrl) {
       return new Response(JSON.stringify({ error: "No Google Sheet URL configured" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
