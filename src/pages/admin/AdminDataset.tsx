@@ -45,9 +45,7 @@ export default function AdminDataset() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const saveSheetUrl = async () => {
     setSavingUrl(true);
@@ -55,24 +53,16 @@ export default function AdminDataset() {
       .from("settings")
       .upsert({ key: "google_sheet_url", value: sheetUrl as any }, { onConflict: "key" });
     if (error) toast.error(error.message);
-    else {
-      toast.success("Sheet URL saved");
-      setSavedUrl(sheetUrl);
-    }
+    else { toast.success("Sheet URL saved"); setSavedUrl(sheetUrl); }
     setSavingUrl(false);
   };
 
   const syncNow = async () => {
     setSyncing(true);
     const { data, error } = await supabase.functions.invoke("sync-dataset-sheet");
-    if (error) {
-      toast.error(error.message);
-    } else if ((data as any)?.error) {
-      toast.error((data as any).error);
-    } else {
-      toast.success(`Synced ${(data as any).count} rows from Google Sheets`);
-      load();
-    }
+    if (error) { toast.error(error.message); }
+    else if ((data as any)?.error) { toast.error((data as any).error); }
+    else { toast.success(`Synced ${(data as any).count} rows`); load(); }
     setSyncing(false);
   };
 
@@ -113,18 +103,18 @@ export default function AdminDataset() {
         .filter(Boolean) as Array<{ plot_number: string; owner_name: string | null; email: string | null; phone: string | null }>;
 
       if (normalized.length === 0) {
-        toast.error("No valid rows. Expected columns: PlotNumber, OwnerName, Email, Phone");
+        toast.error("No valid rows found. Expected columns: PlotNumber, OwnerName, Email, Phone");
         setUploading(false);
         return;
       }
 
-      const { error } = await supabase.from("dataset_entries").insert(normalized);
-      if (error) {
-        toast.error(error.message);
-      } else {
-        toast.success(`Imported ${normalized.length} rows`);
-        load();
-      }
+      // Upsert on plot_number — prevents duplicates on re-upload
+      const { error } = await supabase
+        .from("dataset_entries")
+        .upsert(normalized, { onConflict: "plot_number" });
+
+      if (error) { toast.error(error.message); }
+      else { toast.success(`Imported / updated ${normalized.length} rows — no duplicates created`); load(); }
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -135,58 +125,48 @@ export default function AdminDataset() {
 
   const clearAll = async () => {
     if (!confirm("Delete ALL dataset entries? This cannot be undone.")) return;
-    const { error } = await supabase.from("dataset_entries").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    const { error } = await supabase
+      .from("dataset_entries")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000");
     if (error) toast.error(error.message);
-    else {
-      toast.success("Dataset cleared");
-      load();
-    }
+    else { toast.success("Dataset cleared"); load(); }
   };
 
   return (
     <div className="space-y-5">
-      {/* Google Sheets sync card */}
       <div className="soft-card p-5">
         <div className="flex items-start gap-3">
-          <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+          <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
             <Link2 className="h-5 w-5" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold">Sync from Google Sheets</p>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Paste a public Google Sheet URL (Anyone with the link → Viewer). Click Sync to replace the dataset.
+              Paste a public Google Sheet URL. Re-syncing updates existing plots without creating duplicates.
             </p>
             <div className="mt-3 space-y-2">
               <div className="flex gap-2">
                 <Input
                   type="url"
-                  placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=0"
+                  placeholder="https://docs.google.com/spreadsheets/d/.../edit"
                   value={sheetUrl}
                   onChange={(e) => setSheetUrl(e.target.value)}
                   className="rounded-xl"
                 />
-                <Button
-                  onClick={saveSheetUrl}
-                  disabled={savingUrl || sheetUrl === savedUrl}
-                  variant="outline"
-                  className="rounded-xl shrink-0"
-                >
+                <Button onClick={saveSheetUrl} disabled={savingUrl || sheetUrl === savedUrl} variant="outline" className="rounded-xl shrink-0">
                   {savingUrl ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   Save
                 </Button>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                <Button
-                  onClick={syncNow}
-                  disabled={syncing || !savedUrl}
-                  className="rounded-xl"
-                >
+                <Button onClick={syncNow} disabled={syncing || !savedUrl} className="rounded-xl">
                   {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                   Sync now
                 </Button>
                 {lastSync && (
                   <p className="text-xs text-muted-foreground">
-                    Last sync: {new Date(lastSync.at).toLocaleString()} • {lastSync.count} rows
+                    Last sync: {new Date(lastSync.at).toLocaleString()} · {lastSync.count} rows
                   </p>
                 )}
               </div>
@@ -195,16 +175,16 @@ export default function AdminDataset() {
         </div>
       </div>
 
-      {/* Manual upload card */}
       <div className="soft-card p-5">
         <div className="flex items-start gap-3">
-          <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+          <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
             <Database className="h-5 w-5" />
           </div>
           <div className="flex-1">
             <p className="font-semibold">Manual upload (Excel / CSV)</p>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Columns: <span className="font-mono">PlotNumber, OwnerName, Email, Phone</span>. Appends to existing data.
+              Columns: <span className="font-mono text-xs">PlotNumber, OwnerName, Email, Phone</span>.
+              Safe to re-upload — existing entries are updated, no duplicates.
             </p>
             <div className="flex gap-2 mt-4 flex-wrap">
               <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={onFile} />
@@ -213,7 +193,7 @@ export default function AdminDataset() {
                 Upload file
               </Button>
               {entries.length > 0 && (
-                <Button variant="outline" onClick={clearAll} className="rounded-xl">
+                <Button variant="outline" onClick={clearAll} className="rounded-xl text-destructive hover:text-destructive">
                   <Trash2 className="h-4 w-4" /> Clear all
                 </Button>
               )}
@@ -224,13 +204,11 @@ export default function AdminDataset() {
 
       <div className="soft-card overflow-hidden">
         <div className="px-5 py-3 border-b border-border/50 flex items-center justify-between">
-          <p className="font-medium">Entries</p>
-          <span className="text-sm text-muted-foreground">{entries.length} rows</span>
+          <p className="font-medium">Dataset</p>
+          <span className="text-sm text-muted-foreground">{entries.length} plots</span>
         </div>
         {loading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          </div>
+          <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
         ) : entries.length === 0 ? (
           <p className="text-center text-sm text-muted-foreground py-10">No entries yet.</p>
         ) : (
@@ -246,7 +224,7 @@ export default function AdminDataset() {
               </thead>
               <tbody>
                 {entries.slice(0, 200).map((e) => (
-                  <tr key={e.id} className="border-t border-border/40">
+                  <tr key={e.id} className="border-t border-border/40 hover:bg-muted/20">
                     <td className="px-4 py-2 font-medium">{e.plot_number}</td>
                     <td className="px-4 py-2">{e.owner_name}</td>
                     <td className="px-4 py-2 text-muted-foreground">{e.email}</td>
@@ -257,7 +235,7 @@ export default function AdminDataset() {
             </table>
             {entries.length > 200 && (
               <p className="text-center text-xs text-muted-foreground py-3">
-                Showing first 200 of {entries.length} rows
+                Showing first 200 of {entries.length}
               </p>
             )}
           </div>

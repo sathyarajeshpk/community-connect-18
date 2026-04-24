@@ -4,14 +4,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2, ChevronLeft } from "lucide-react";
 
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   defaultAmount?: number;
   payerName?: string;
+  plotNumber?: string;
 }
 
 interface UpiSettings {
@@ -20,31 +22,54 @@ interface UpiSettings {
 }
 
 const APPS: { key: string; label: string; scheme: string; color: string }[] = [
-  { key: "gpay", label: "Google Pay", scheme: "tez", color: "from-[hsl(140_60%_55%)] to-[hsl(200_70%_60%)]" },
-  { key: "phonepe", label: "PhonePe", scheme: "phonepe", color: "from-[hsl(265_60%_55%)] to-[hsl(280_70%_65%)]" },
-  { key: "paytm", label: "Paytm", scheme: "paytmmp", color: "from-[hsl(210_70%_55%)] to-[hsl(195_75%_60%)]" },
-  { key: "bhim", label: "BHIM / Any UPI app", scheme: "upi", color: "from-[hsl(20_75%_60%)] to-[hsl(40_80%_60%)]" },
+  { key: "gpay",    label: "Google Pay", scheme: "tez",      color: "from-[hsl(140_60%_55%)] to-[hsl(200_70%_60%)]" },
+  { key: "phonepe", label: "PhonePe",    scheme: "phonepe",  color: "from-[hsl(265_60%_55%)] to-[hsl(280_70%_65%)]" },
+  { key: "paytm",   label: "Paytm",      scheme: "paytmmp",  color: "from-[hsl(210_70%_55%)] to-[hsl(195_75%_60%)]" },
+  { key: "bhim",    label: "BHIM / UPI", scheme: "upi",      color: "from-[hsl(20_75%_60%)] to-[hsl(40_80%_60%)]" },
 ];
 
-export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName }: Props) {
+function getDefaultMonth() {
+  return new Date().toISOString().slice(0, 7);
+}
+
+export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName, plotNumber }: Props) {
+  const { user, profile } = useAuth();
   const [settings, setSettings] = useState<UpiSettings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingSettings, setLoadingSettings] = useState(true);
   const [amount, setAmount] = useState<string>(defaultAmount ? String(defaultAmount) : "");
   const [note, setNote] = useState<string>(payerName ? `Maintenance — ${payerName}` : "Maintenance");
+  const [step, setStep] = useState<"pay" | "record">("pay");
+  const [utrRef, setUtrRef] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(getDefaultMonth());
+  const [recording, setRecording] = useState(false);
+  const [done, setDone] = useState(false);
+
+  // Build last-6-months list for month selector
+  const monthOptions = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    return d.toISOString().slice(0, 7);
+  });
+
+  function fmtMonth(m: string) {
+    const [y, mo] = m.split("-");
+    return new Date(Number(y), Number(mo) - 1).toLocaleString("default", { month: "long", year: "numeric" });
+  }
 
   useEffect(() => {
-    if (!open) return;
-    setLoading(true);
-    supabase
-      .from("settings")
-      .select("value")
-      .eq("key", "upi")
-      .maybeSingle()
-      .then(({ data }) => {
-        const v = (data?.value ?? null) as unknown as UpiSettings | null;
-        setSettings(v && v.vpa ? v : null);
-        setLoading(false);
-      });
+    if (!open) { setStep("pay"); setUtrRef(""); setDone(false); return; }
+    setLoadingSettings(true);
+    // Also load monthly amount from settings
+    Promise.all([
+      supabase.from("settings").select("value").eq("key", "upi").maybeSingle(),
+      supabase.from("settings").select("value").eq("key", "monthly_amount").maybeSingle(),
+    ]).then(([upiRes, amtRes]) => {
+      const v = (upiRes.data?.value ?? null) as unknown as UpiSettings | null;
+      setSettings(v && v.vpa ? v : null);
+      const amt = Number(amtRes.data?.value ?? 0);
+      if (amt > 0 && !defaultAmount) setAmount(String(amt));
+      setLoadingSettings(false);
+    });
   }, [open]);
 
   const buildUri = (scheme: string) => {
@@ -61,86 +86,148 @@ export function UpiPayDialog({ open, onOpenChange, defaultAmount = 0, payerName 
 
   const pay = (scheme: string) => {
     const uri = buildUri(scheme);
-    if (!uri) {
-      toast.error("UPI is not configured yet. Ask an admin to set it.");
+    if (!uri) { toast.error("UPI is not configured yet. Ask an admin to set it up."); return; }
+    window.location.href = uri;
+    // After redirect back, show record step
+    setTimeout(() => setStep("record"), 1500);
+  };
+
+  const recordPayment = async () => {
+    if (!user) return;
+    const resolvedPlot = plotNumber ?? profile?.plot_id ?? null;
+    if (!resolvedPlot) {
+      toast.error("Plot number not found. Contact admin.");
       return;
     }
-    window.location.href = uri;
+    if (!amount || Number(amount) <= 0) { toast.error("Enter the amount paid"); return; }
+    setRecording(true);
+    const { error } = await supabase.from("maintenance_payments").insert({
+      plot_number: resolvedPlot,
+      paid_by: user.id,
+      payer_name: payerName ?? profile?.name ?? null,
+      amount: Number(amount),
+      month: selectedMonth,
+      utr_ref: utrRef.trim() || null,
+      status: "pending",
+    });
+    setRecording(false);
+    if (error) { toast.error(error.message); return; }
+    setDone(true);
+    toast.success("Payment recorded! Admin will confirm it shortly.");
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-3xl">
         <DialogHeader>
-          <DialogTitle>Pay maintenance via UPI</DialogTitle>
+          <DialogTitle>
+            {step === "pay" ? "Pay maintenance via UPI" : "Record your payment"}
+          </DialogTitle>
           <DialogDescription>
-            Choose your UPI app — the amount and payee details will be filled in for you. No platform fees.
+            {step === "pay"
+              ? "Choose your UPI app — amount and payee details will be prefilled."
+              : "Enter your UTR / transaction reference so the admin can verify."}
           </DialogDescription>
         </DialogHeader>
 
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+        {loadingSettings ? (
+          <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+        ) : done ? (
+          <div className="flex flex-col items-center py-8 gap-4 text-center">
+            <div className="h-16 w-16 rounded-2xl bg-success/10 text-success flex items-center justify-center">
+              <CheckCircle2 className="h-8 w-8" />
+            </div>
+            <div>
+              <p className="font-semibold text-lg">Payment recorded!</p>
+              <p className="text-sm text-muted-foreground mt-1">The admin will confirm your payment shortly. You can track it in your payment history.</p>
+            </div>
+            <Button className="rounded-xl w-full mt-2" onClick={() => onOpenChange(false)}>Close</Button>
           </div>
-        ) : !settings ? (
-          <div className="neu-inset p-4 text-sm text-muted-foreground">
-            UPI hasn't been set up yet. An admin can add the society's UPI ID under Admin → Settings.
+        ) : step === "pay" ? (
+          <div className="space-y-4">
+            {!settings ? (
+              <div className="neu-inset p-4 text-sm text-muted-foreground">
+                UPI hasn't been set up yet. An admin can add the society's UPI ID under Admin → Settings.
+              </div>
+            ) : (
+              <>
+                <div className="neu-inset p-3 text-sm">
+                  <p className="text-muted-foreground text-xs mb-1">Paying to</p>
+                  <p className="font-medium">{settings.payee_name || "Residence"}</p>
+                  <p className="text-xs text-muted-foreground">{settings.vpa}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="amt">Amount (₹)</Label>
+                    <Input id="amt" inputMode="decimal" placeholder="e.g. 1500" value={amount}
+                      onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} className="rounded-xl" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="note">Note</Label>
+                    <Input id="note" value={note} onChange={(e) => setNote(e.target.value)} className="rounded-xl" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  {APPS.map((app) => (
+                    <button key={app.key} onClick={() => pay(app.scheme)}
+                      className="soft-card p-3 flex items-center gap-3 text-left active:scale-[0.98] transition-transform">
+                      <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${app.color} flex items-center justify-center text-primary-foreground font-bold shadow-soft`}>
+                        {app.label.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{app.label}</p>
+                        <p className="text-[11px] text-muted-foreground">Open app</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setStep("record")}
+                  className="text-sm text-primary underline w-full text-center mt-1"
+                >
+                  Already paid? Record your payment →
+                </button>
+              </>
+            )}
+            <p className="text-[11px] text-muted-foreground">Money goes directly to the society — no platform fee.</p>
+            <Button variant="ghost" className="w-full rounded-xl" onClick={() => onOpenChange(false)}>Close</Button>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="neu-inset p-3 text-sm">
-              <p className="text-muted-foreground">Paying to</p>
-              <p className="font-medium">{settings.payee_name || "Residence"}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{settings.vpa}</p>
+            <div className="space-y-1.5">
+              <Label>Month paid for</Label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {monthOptions.map((m) => (
+                  <option key={m} value={m}>{fmtMonth(m)}</option>
+                ))}
+              </select>
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="amt">Amount (₹)</Label>
-                <Input
-                  id="amt"
-                  inputMode="decimal"
-                  placeholder="e.g. 1500"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-                  className="rounded-xl"
-                />
+                <Label htmlFor="rec-amt">Amount paid (₹)</Label>
+                <Input id="rec-amt" inputMode="decimal" value={amount}
+                  onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} className="rounded-xl" placeholder="e.g. 1500" />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="note">Note</Label>
-                <Input
-                  id="note"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  className="rounded-xl"
-                />
+                <Label htmlFor="utr">UTR / Ref no.</Label>
+                <Input id="utr" value={utrRef} onChange={(e) => setUtrRef(e.target.value)}
+                  className="rounded-xl" placeholder="Transaction ID" />
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              {APPS.map((app) => (
-                <button
-                  key={app.key}
-                  onClick={() => pay(app.scheme)}
-                  className="soft-card p-3 flex items-center gap-3 text-left active:scale-[0.98] transition-transform"
-                >
-                  <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${app.color} flex items-center justify-center text-primary-foreground font-bold shadow-soft`}>
-                    {app.label.charAt(0)}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-sm truncate">{app.label}</p>
-                    <p className="text-[11px] text-muted-foreground">Open app</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            <p className="text-[11px] text-muted-foreground">
-              The link opens your UPI app to complete the payment. Money goes directly to the society — Residence doesn't take any cut.
-            </p>
-
-            <Button variant="ghost" className="w-full rounded-xl" onClick={() => onOpenChange(false)}>
-              Close
+            <p className="text-xs text-muted-foreground">UTR helps the admin verify your payment quickly. Find it in your UPI app's transaction history.</p>
+            <Button onClick={recordPayment} disabled={recording} className="w-full rounded-xl h-11">
+              {recording ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              Submit for confirmation
+            </Button>
+            <Button variant="ghost" size="sm" className="w-full rounded-xl gap-1.5" onClick={() => setStep("pay")}>
+              <ChevronLeft className="h-4 w-4" /> Back to payment
             </Button>
           </div>
         )}

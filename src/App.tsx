@@ -17,7 +17,8 @@ import Directory from "./pages/Directory";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminApprovals from "./pages/admin/AdminApprovals";
 import AdminDataset from "./pages/admin/AdminDataset";
-import AdminPlots from "./pages/admin/AdminPlots";
+import AdminPeople from "./pages/admin/AdminPeople";
+import AdminPayments from "./pages/admin/AdminPayments";
 import AdminAdmins from "./pages/admin/AdminAdmins";
 import AdminSettings from "./pages/admin/AdminSettings";
 
@@ -49,7 +50,8 @@ const App = () => (
             >
               <Route index element={<AdminApprovals />} />
               <Route path="dataset" element={<AdminDataset />} />
-              <Route path="plots" element={<AdminPlots />} />
+              <Route path="people" element={<AdminPeople />} />
+              <Route path="payments" element={<AdminPayments />} />
               <Route path="admins" element={<AdminAdmins />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>

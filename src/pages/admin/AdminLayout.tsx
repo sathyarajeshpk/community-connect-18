@@ -1,14 +1,12 @@
-import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 import { AppShell } from "@/components/AppShell";
-import { Users, Database, Shield, Building2, Settings as SettingsIcon } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Users, Database, Shield, Settings as SettingsIcon, IndianRupee } from "lucide-react";
 
 const tabs = [
   { to: "/admin", label: "Approvals", icon: Users, end: true },
   { to: "/admin/dataset", label: "Dataset", icon: Database },
-  { to: "/admin/plots", label: "Plots", icon: Building2 },
+  { to: "/admin/people", label: "People", icon: Users },
+  { to: "/admin/payments", label: "Payments", icon: IndianRupee },
   { to: "/admin/admins", label: "Admins", icon: Shield },
   { to: "/admin/settings", label: "Settings", icon: SettingsIcon },
 ];
